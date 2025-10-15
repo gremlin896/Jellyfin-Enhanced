@@ -470,6 +470,8 @@
                     previewStyle = `font-size: ${preset.size}em; color: #fff; text-shadow: 0 0 4px rgba(0,0,0,0.8);`;
                 } else if (type === 'font-family') {
                     previewStyle = `font-family: ${preset.family}; color: #fff; text-shadow: 0 0 4px rgba(0,0,0,0.8); font-size: 1.5em;`;
+                } else if (type === 'shadow') {
+                    previewStyle = `font-size: 1.5em; color: #fff; text-shadow: ${preset.value};`;
                 }
                 return `
                     <div class="preset-box ${type}-preset" data-preset-index="${index}" title="${preset.name}" style="display: flex; justify-content: center; align-items: center; padding: 8px; border: 2px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: ${presetBoxBackground}; min-height: 30px;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='${presetBoxBackground}'">
@@ -599,6 +601,7 @@
                             <div style="margin-bottom: 16px;"><div style="font-weight: 600; margin-bottom: 8px;">${JE.t('panel_settings_subtitles_style')}</div><div id="subtitle-style-presets-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 8px;">${generatePresetHTML(JE.subtitlePresets, 'style')}</div></div>
                             <div style="margin-bottom: 16px;"><div style="font-weight: 600; margin-bottom: 8px;">${JE.t('panel_settings_subtitles_size')}</div><div id="font-size-presets-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 8px;">${generatePresetHTML(JE.fontSizePresets, 'font-size')}</div></div>
                             <div style="margin-bottom: 16px;"><div style="font-weight: 600; margin-bottom: 8px;">${JE.t('panel_settings_subtitles_font')}</div><div id="font-family-presets-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 8px;">${generatePresetHTML(JE.fontFamilyPresets, 'font-family')}</div></div>
+                             <div style="margin-bottom: 16px;"><div style="font-weight: 600; margin-bottom: 8px;">${JE.t('panel_settings_subtitles_shadow')}</div><div id="shadow-presets-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 8px;">${generatePresetHTML(JE.shadowPresets, 'shadow')}</div></div>
                         </div>
                     </details>
                     <details style="margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: ${detailsBackground};">
@@ -874,26 +877,42 @@
                         JE.currentSettings.selectedStylePresetIndex = presetIndex;
                         const fontSizeIndex = JE.currentSettings.selectedFontSizePresetIndex ?? 2;
                         const fontFamilyIndex = JE.currentSettings.selectedFontFamilyPresetIndex ?? 0;
+                        const shadowIndex = JE.currentSettings.selectedShadowPresetIndex ?? 1;
                         const fontSize = JE.fontSizePresets[fontSizeIndex].size;
                         const fontFamily = JE.fontFamilyPresets[fontFamilyIndex].family;
-                        JE.applySubtitleStyles(selectedPreset.textColor, selectedPreset.bgColor, fontSize, fontFamily, selectedPreset.textShadow);
+                        const shadow = JE.shadowPresets[shadowIndex].value;
+                        JE.applySubtitleStyles(selectedPreset.textColor, selectedPreset.bgColor, fontSize, fontFamily, shadow);
                         JE.toast(JE.t('toast_subtitle_style', { style: selectedPreset.name }));
                     } else if (type === 'font-size') {
                         JE.currentSettings.selectedFontSizePresetIndex = presetIndex;
                         const styleIndex = JE.currentSettings.selectedStylePresetIndex ?? 0;
                         const fontFamilyIndex = JE.currentSettings.selectedFontFamilyPresetIndex ?? 0;
+                        const shadowIndex = JE.currentSettings.selectedShadowPresetIndex ?? 1;
                         const stylePreset = JE.subtitlePresets[styleIndex];
                         const fontFamily = JE.fontFamilyPresets[fontFamilyIndex].family;
-                        JE.applySubtitleStyles(stylePreset.textColor, stylePreset.bgColor, selectedPreset.size, fontFamily, stylePreset.textShadow);
+                        const shadow = JE.shadowPresets[shadowIndex].value;
+                        JE.applySubtitleStyles(stylePreset.textColor, stylePreset.bgColor, selectedPreset.size, fontFamily, shadow);
                         JE.toast(JE.t('toast_subtitle_size', { size: selectedPreset.name }));
                     } else if (type === 'font-family') {
                         JE.currentSettings.selectedFontFamilyPresetIndex = presetIndex;
                         const styleIndex = JE.currentSettings.selectedStylePresetIndex ?? 0;
                         const fontSizeIndex = JE.currentSettings.selectedFontSizePresetIndex ?? 2;
+                        const shadowIndex = JE.currentSettings.selectedShadowPresetIndex ?? 1;
                         const stylePreset = JE.subtitlePresets[styleIndex];
                         const fontSize = JE.fontSizePresets[fontSizeIndex].size;
-                        JE.applySubtitleStyles(stylePreset.textColor, stylePreset.bgColor, fontSize, selectedPreset.family, stylePreset.textShadow);
+                        const shadow = JE.shadowPresets[shadowIndex].value;
+                        JE.applySubtitleStyles(stylePreset.textColor, stylePreset.bgColor, fontSize, selectedPreset.family, shadow);
                         JE.toast(JE.t('toast_subtitle_font', { font: selectedPreset.name }));
+                    } else if (type === 'shadow') {
+                        JE.currentSettings.selectedShadowPresetIndex = presetIndex;
+                        const styleIndex = JE.currentSettings.selectedStylePresetIndex ?? 0;
+                        const fontSizeIndex = JE.currentSettings.selectedFontSizePresetIndex ?? 2;
+                        const fontFamilyIndex = JE.currentSettings.selectedFontFamilyPresetIndex ?? 0;
+                        const stylePreset = JE.subtitlePresets[styleIndex];
+                        const fontSize = JE.fontSizePresets[fontSizeIndex].size;
+                        const fontFamily = JE.fontFamilyPresets[fontFamilyIndex].family;
+                        JE.applySubtitleStyles(stylePreset.textColor, stylePreset.bgColor, fontSize, fontFamily, selectedPreset.value);
+                        JE.toast(JE.t('toast_subtitle_shadow', { shadow: selectedPreset.name }));
                     }
 
                     JE.saveSettings(JE.currentSettings);
@@ -912,6 +931,8 @@
                 currentIndex = JE.currentSettings.selectedFontSizePresetIndex ?? 2;
             } else if (type === 'font-family') {
                 currentIndex = JE.currentSettings.selectedFontFamilyPresetIndex ?? 0;
+            } else if (type === 'shadow') {
+                currentIndex = JE.currentSettings.selectedShadowPresetIndex ?? 1;
             }
 
             const activeBox = container.querySelector(`[data-preset-index="${currentIndex}"]`);
@@ -923,6 +944,7 @@
         setupPresetHandlers('subtitle-style-presets-container', JE.subtitlePresets, 'style');
         setupPresetHandlers('font-size-presets-container', JE.fontSizePresets, 'font-size');
         setupPresetHandlers('font-family-presets-container', JE.fontFamilyPresets, 'font-family');
+        setupPresetHandlers('shadow-presets-container', JE.shadowPresets, 'shadow');
     };
 
 })(window.JellyfinEnhanced);

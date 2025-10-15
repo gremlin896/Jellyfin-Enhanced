@@ -9,7 +9,7 @@
      * @type {Array<object>}
      */
     JE.subtitlePresets = [
-        { name: "Clean White", textColor: "#FFFFFFFF", bgColor: "transparent", textShadow: "-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000", previewText: "Aa" },
+        { name: "Clean White", textColor: "#FFFFFFFF", bgColor: "transparent", previewText: "Aa" },
         { name: "Classic Black Box", textColor: "#FFFFFFFF", bgColor: "#000000FF", previewText: "Aa" },
         { name: "Netflix Style", textColor: "#FFFFFFFF", bgColor: "#000000B2", previewText: "Aa" },
         { name: "Cinema Yellow", textColor: "#FFFF00FF", bgColor: "#000000B2", previewText: "Aa" },
@@ -43,11 +43,23 @@
     ];
 
     /**
+     * Preset shadow styles for subtitles.
+     * @type {Array<object>}
+     */
+    JE.shadowPresets = [
+        { name: "None", value: "none", previewText: "Aa" },
+        { name: "Outline", value: "-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000", previewText: "Aa" },
+        { name: "Drop Shadow", value: "2px 2px 4px #000000B2", previewText: "Aa" },
+        { name: "Raised", value: "1px 1px 0px #000, 1px 2px 0px #000", previewText: "Aa" }
+    ];
+
+    /**
      * Applies subtitle styles by modifying the dedicated cue style element.
      * @param {string} textColor The color of the subtitle text.
      * @param {string} bgColor The background color of the subtitles.
      * @param {number} fontSize The font size in vw units.
      * @param {string} fontFamily The font family.
+     * @param {string} textShadow The text shadow effect.
      */
     JE.applySubtitleStyles = (textColor, bgColor, fontSize, fontFamily, textShadow) => {
         const styleElement = document.getElementById('htmlvideoplayer-cuestyle');
@@ -97,18 +109,20 @@
         const savedStyleIndex = JE.currentSettings.selectedStylePresetIndex ?? 0;
         const savedFontSizeIndex = JE.currentSettings.selectedFontSizePresetIndex ?? 2;
         const savedFontFamilyIndex = JE.currentSettings.selectedFontFamilyPresetIndex ?? 0;
+        const savedShadowIndex = JE.currentSettings.selectedShadowPresetIndex ?? 1;
 
         const stylePreset = JE.subtitlePresets[savedStyleIndex];
         const fontSizePreset = JE.fontSizePresets[savedFontSizeIndex];
         const fontFamilyPreset = JE.fontFamilyPresets[savedFontFamilyIndex];
+        const shadowPreset = JE.shadowPresets[savedShadowIndex];
 
-        if (stylePreset && fontSizePreset && fontFamilyPreset) {
+        if (stylePreset && fontSizePreset && fontFamilyPreset && shadowPreset) {
             JE.applySubtitleStyles(
                 stylePreset.textColor,
                 stylePreset.bgColor,
                 fontSizePreset.size,
                 fontFamilyPreset.family,
-                stylePreset.textShadow
+                shadowPreset.value
             );
         }
     };

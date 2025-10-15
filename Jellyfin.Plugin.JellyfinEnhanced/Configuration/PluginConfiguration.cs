@@ -50,6 +50,7 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Configuration
             DefaultSubtitleStyle = 0;
             DefaultSubtitleSize = 2;
             DefaultSubtitleFont = 0;
+            DefaultSubtitleShadow = 1;
             DisableCustomSubtitleStyles = false;
             Shortcuts = new List<Shortcut>
             {
@@ -123,6 +124,7 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Configuration
         public int DefaultSubtitleStyle { get; set; }
         public int DefaultSubtitleSize { get; set; }
         public int DefaultSubtitleFont { get; set; }
+        public int DefaultSubtitleShadow { get; set; }
         public bool DisableCustomSubtitleStyles { get; set; }
 
         // Jellyseerr Search Settings
