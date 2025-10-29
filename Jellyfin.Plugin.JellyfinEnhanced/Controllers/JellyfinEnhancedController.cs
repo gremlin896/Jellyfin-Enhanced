@@ -339,6 +339,13 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
             return ProxyJellyseerrRequest($"/api/v1/tv/{tmdbId}/seasons", HttpMethod.Get);
         }
 
+        [HttpGet("jellyseerr/overrideRule")]
+        [Authorize]
+        public Task<IActionResult> GetOverrideRules()
+        {
+            return ProxyJellyseerrRequest("/api/v1/overrideRule", HttpMethod.Get);
+        }
+
         [HttpPost("jellyseerr/request/tv/{tmdbId}/seasons")]
         [Authorize]
         public async Task<IActionResult> RequestTvSeasons(int tmdbId, [FromBody] JsonElement requestBody)

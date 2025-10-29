@@ -86,14 +86,157 @@
     };
 
     /**
+     * Fetches override rules from Jellyseerr.
+     * @returns {Promise<Array>}
+     */
+    api.fetchOverrideRules = async function() {
+        try {
+            const rules = await get('/overrideRule');
+            return Array.isArray(rules) ? rules : [];
+        } catch (error) {
+            console.error(`${logPrefix} Failed to fetch override rules:`, error);
+            return [];
+        }
+    };
+
+    /**
+     * Evaluates override rules against media metadata and returns matching rule settings.
+     * @param {object} mediaData - Media object with originalLanguage, genres, etc.
+     * @param {string} mediaType - 'movie' or 'tv'.
+     * @param {boolean} is4k - Whether this is a 4K request.
+     * @returns {Promise<object|null>} - Rule settings to apply or null if no match.
+     */
+    api.evaluateOverrideRules = async function(mediaData, mediaType, is4k = false) {
+        try {
+            const rules = await api.fetchOverrideRules();
+            if (!rules || rules.length === 0) {
+                console.debug(`${logPrefix} No override rules configured`);
+                return null;
+            }
+
+            const serviceIdKey = mediaType === 'movie' ? 'radarrServiceId' : 'sonarrServiceId';
+            const applicableRules = rules.filter(rule => {
+                // Filter by service type (movie uses radarr, tv uses sonarr)
+                if (rule[serviceIdKey] === null || rule[serviceIdKey] === undefined) {
+                    return false;
+                }
+                return true;
+            });
+
+            if (applicableRules.length === 0) {
+                console.debug(`${logPrefix} No applicable rules for ${mediaType}`);
+                return null;
+            }
+
+            // Find the first matching rule
+            for (const rule of applicableRules) {
+                let matches = true;
+
+                // Check language condition (pipe-separated ISO codes)
+                if (rule.language && mediaData.originalLanguage) {
+                    const allowedLanguages = rule.language.split('|').map(l => l.trim().toLowerCase());
+                    if (!allowedLanguages.includes(mediaData.originalLanguage.toLowerCase())) {
+                        matches = false;
+                        continue;
+                    }
+                }
+
+                // Check genre condition (pipe-separated genre IDs or names)
+                if (rule.genre && mediaData.genreIds) {
+                    const ruleGenres = rule.genre.split('|').map(g => g.trim().toLowerCase());
+                    const mediaGenreNames = (mediaData.genres || []).map(g => g.name.toLowerCase());
+                    const mediaGenreIds = (mediaData.genreIds || []).map(id => id.toString());
+
+                    const hasMatchingGenre = ruleGenres.some(ruleGenre =>
+                        mediaGenreNames.includes(ruleGenre) || mediaGenreIds.includes(ruleGenre)
+                    );
+
+                    if (!hasMatchingGenre) {
+                        matches = false;
+                        continue;
+                    }
+                }
+
+                // Check keywords condition (not commonly available in search results, but included for completeness)
+                if (rule.keywords && mediaData.keywords) {
+                    const ruleKeywords = rule.keywords.split('|').map(k => k.trim().toLowerCase());
+                    const mediaKeywordNames = (mediaData.keywords || []).map(k => k.name?.toLowerCase() || '');
+
+                    const hasMatchingKeyword = ruleKeywords.some(ruleKeyword =>
+                        mediaKeywordNames.includes(ruleKeyword)
+                    );
+
+                    if (!hasMatchingKeyword) {
+                        matches = false;
+                        continue;
+                    }
+                }
+
+                // Check user condition (would require current user ID from Jellyseerr)
+                // Skipping user check for now as it would require additional API calls
+
+                if (matches) {
+                    console.log(`${logPrefix} Matched override rule ${rule.id}:`, {
+                        language: rule.language,
+                        genre: rule.genre,
+                        profileId: rule.profileId,
+                        rootFolder: rule.rootFolder
+                    });
+
+                    // Return the settings to apply
+                    const settings = {};
+                    if (rule.profileId !== null && rule.profileId !== undefined) {
+                        settings.profileId = rule.profileId;
+                    }
+                    if (rule.rootFolder) {
+                        settings.rootFolder = rule.rootFolder;
+                    }
+                    if (rule.tags) {
+                        // Convert tags to array format that Jellyseerr expects
+                        if (Array.isArray(rule.tags)) {
+                            settings.tags = rule.tags;
+                        } else if (typeof rule.tags === 'string') {
+                            // Handle pipe-separated string or single value
+                            settings.tags = rule.tags.split('|').map(t => parseInt(t.trim())).filter(t => !isNaN(t));
+                        } else if (typeof rule.tags === 'number') {
+                            settings.tags = [rule.tags];
+                        }
+                    }
+                    if (rule[serviceIdKey] !== null && rule[serviceIdKey] !== undefined) {
+                        settings.serverId = rule[serviceIdKey];
+                    }
+
+                    return settings;
+                }
+            }
+
+            console.debug(`${logPrefix} No matching override rules found`);
+            return null;
+        } catch (error) {
+            console.error(`${logPrefix} Error evaluating override rules:`, error);
+            return null;
+        }
+    };
+
+    /**
      * Submits a request for a movie or an entire TV series.
      * @param {number} tmdbId - The TMDB ID of the media.
      * @param {string} mediaType - 'movie' or 'tv'.
      * @param {object} [advancedSettings={}] - Optional advanced settings (server, quality, folder).
      * @param {boolean} [is4k=false] - Whether this is a 4K request.
+     * @param {object} [mediaData=null] - Optional media data for override rule evaluation.
      * @returns {Promise<any>}
      */
-    api.requestMedia = async function(tmdbId, mediaType, advancedSettings = {}, is4k = false) {
+    api.requestMedia = async function(tmdbId, mediaType, advancedSettings = {}, is4k = false, mediaData = null) {
+        // Apply override rules if no advanced settings are provided and media data is available
+        if (Object.keys(advancedSettings).length === 0 && mediaData) {
+            const overrideSettings = await api.evaluateOverrideRules(mediaData, mediaType, is4k);
+            if (overrideSettings) {
+                console.log(`${logPrefix} Applying override rule settings:`, overrideSettings);
+                advancedSettings = { ...overrideSettings };
+            }
+        }
+
         const body = { mediaType, mediaId: parseInt(tmdbId), ...advancedSettings };
         if (mediaType === 'tv') body.seasons = "all";
         if (is4k) body.is4k = true;
@@ -105,9 +248,19 @@
      * @param {number} tmdbId - The TMDB ID of the TV show.
      * @param {number[]} seasonNumbers - An array of season numbers to request.
      * @param {object} [advancedSettings={}] - Optional advanced settings (server, quality, folder).
+     * @param {object} [mediaData=null] - Optional media data for override rule evaluation.
      * @returns {Promise<any>}
      */
-    api.requestTvSeasons = async function(tmdbId, seasonNumbers, advancedSettings = {}) {
+    api.requestTvSeasons = async function(tmdbId, seasonNumbers, advancedSettings = {}, mediaData = null) {
+        // Apply override rules if no advanced settings are provided and media data is available
+        if (Object.keys(advancedSettings).length === 0 && mediaData) {
+            const overrideSettings = await api.evaluateOverrideRules(mediaData, 'tv', false);
+            if (overrideSettings) {
+                console.log(`${logPrefix} Applying override rule settings for TV seasons:`, overrideSettings);
+                advancedSettings = { ...overrideSettings };
+            }
+        }
+
         const body = { mediaType: 'tv', mediaId: parseInt(tmdbId), seasons: seasonNumbers, ...advancedSettings };
         return post('/request', body);
     };
